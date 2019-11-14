@@ -1,5 +1,3 @@
-infrastructure <- read_csv("raw_data_infrastructure.csv")
-
 # read in raw LSL data
 infrastructure_current <- read_csv("//FS2/Indiv$/ERB/Documents/raw_data_infrastructure.csv")
 
