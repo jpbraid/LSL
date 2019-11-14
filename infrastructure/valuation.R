@@ -26,4 +26,8 @@ agency_data <- agency_data %>%
   filter(LSL != "-", !is.na(Salary), Super %in% c("CSS", "PSS")) %>%
   mutate(Birthdate = dmy(Birthdate), APS_Start = dmy(APS_Start))
 
+N_datarec <- nrow(agency_data)
+
+# do some wrangling of the original data (don't know if it's really necessary to give this a new name)
+#agency_val <- agency_data %>% mutate(blah)
 
