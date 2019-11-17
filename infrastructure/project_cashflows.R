@@ -6,7 +6,7 @@ master_file <- "Infrastructure_proj.csv"
 retirement_file <- "Retirementrate_PSSCSS_2017.csv"
 valuation_date <- dmy("01/06/2019")
 eligible_year <- 10 # number of years of service required before eligible for LSL
-start_rate <- 0.09
+start_rate <- 0.09 # rate of in-service LSL use in first year of eligibility
 reduce_rate <- 0.01
 end_rate <- 0.06
 LSL_DATA = "S:/Projection/"
