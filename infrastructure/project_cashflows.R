@@ -2,7 +2,7 @@ library(tidyverse)
 library(lubridate)
 
 ##############################################
-master_file <- "Infrastructure_proj.csv"
+master_file <- "NDIA_proj.csv"
 retirement_file <- "Retirementrate_PSSCSS_2017.csv"
 valuation_date <- dmy("01/06/2019")
 eligible_year <- 10 # number of years of service required before eligible for LSL
@@ -19,8 +19,8 @@ retirement_data <- read_csv(paste0(LSL_VAL, retirement_file)) ## corresponds to 
 
 # do some wrangling of the original data
 agency_val <- agency_data %>% 
-  select(-c(Duration, Exit_Rate))
-filter(!is.na(Birthdate), !is.na(APS_Start), str_sub(Super, 1L, 1L) %in% c("P", "C")) %>%
+  select(-c(Duration, Exit_Rate)) %>%
+  filter(!is.na(Birthdate), !is.na(APS_Start), str_sub(Super, 1L, 1L) %in% c("P", "C")) %>%
   mutate(Birthdate = dmy(Birthdate), 
          APS_Start = dmy(APS_Start),
          Jage = as.numeric((valuation_date - Birthdate)/365.25),
@@ -38,7 +38,7 @@ exit_rates <- agency_data %>% filter(complete.cases(agency_data)) %>% select(Exi
 takeup_rates <- ifelse(start_rate - (0:100)*reduce_rate >= end_rate, start_rate - (0:100)*reduce_rate, end_rate)
 
 # define function for projecting cashflows
-# "not good" in the sense that it depends on global variables
+# TODO: remove dependence on global variables
 project_cashflows <- function(record) {
   # set up params for analysis
   start_age <- record$age
@@ -53,29 +53,46 @@ project_cashflows <- function(record) {
   PSS <- str_sub(record$Super, 1L, 1L) == "P"
   retirement_rates <- PSS*retirement_data$Retirement_PSS + (1 - PSS)*retirement_data$Retirement_CSS
   
-  cash_flow_projections <- data.frame(observation = record$AGS, analysis_year = NA, kpx = NA, qx = NA, cash_flow = NA)
+  cash_flow_projections <- data.frame(observation = record$AGS, age = NA, service = NA, analysis_year = NA, kpx = NA, qx = NA, taken_in_service = NA,
+                                      taken_in_service_weighted = NA, taken_after_exit = NA, taken_after_exit_weighted = NA, 
+                                      cash_flow = NA)
   
   # now project cash flows for each year
   while (age <= R_max_age) {
     index <- age - start_age + 1
     at_retirement_age <- age >= R_min_age
-    eligible <- at_retirement_age || service >= eligible_years
-    year_of_eligibility <- max(age - R_min_age + 1, service - eligible_year + 1)
+    eligible_in_service <- service >= eligible_year
+    eligible_on_exit <- at_retirement_age || eligible_in_service
+    year_of_eligibility <- max(0, service - eligible_year + 1)
     if (at_retirement_age) qx[index] <- retirement_rates[age - R_min_age + 1] else qx[index] <- exit_rates[service + 1]
-    if (eligible) takeup_rate <- takeup_rates[year_of_eligibility] else takeup_rate <- 0
-    taken_this_year <- after_retirement*takeup_rate
+    if (eligible_in_service) takeup_rate <- takeup_rates[year_of_eligibility] else takeup_rate <- 0
+    taken_this_year <- LSL*takeup_rate
     taken_this_year_weighted <- taken_this_year*px[index]
-    sum_taken <- sum_taken + taken_this_year
-    after_retirement <- LSL - sum_taken
-    after_retirement_weighted <- after_retirement*px[index]*qx[index]
-    cash_flow <- taken_this_year_weighted + after_retirement_weighted
+    #sum_taken <- sum_taken + taken_this_year
+    LSL <- LSL - taken_this_year
+    if (eligible_on_exit) {
+      after_exit <- LSL
+      after_exit_weighted <- after_exit*px[index]*qx[index]
+    } else {
+      after_exit <- after_exit_weighted <- 0
+    }
+    cash_flow <- taken_this_year_weighted + after_exit_weighted
     cash_flow_projections <- rbind(cash_flow_projections, 
-                                   data.frame(observation = record$AGS, analysis_year = index, kpx = px[index], 
-                                              qx = qx[index], cash_flow = cash_flow))
+                                   data.frame(observation = record$AGS, age = age, service = service, 
+                                              analysis_year = index, kpx = px[index], 
+                                              qx = qx[index], taken_in_service = taken_this_year, 
+                                              taken_in_service_weighted = taken_this_year_weighted, 
+                                              taken_after_exit = after_exit,
+                                              taken_after_exit_weighted = after_exit_weighted, 
+                                              cash_flow = cash_flow))
     age <- age + 1
     service <- service + 1
     px[index + 1] <- px[index]*(1 - qx[index])
   }
   
-  return(cash_flow_projections)
+  cash_flow_projections %>% filter(complete.cases(cash_flow_projections))
 }
+
+# do some unit tests
+# age 75, 74, 54, 55... different amounts of service
+# then compare w/ limin's program
