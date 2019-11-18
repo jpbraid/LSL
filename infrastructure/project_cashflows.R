@@ -43,16 +43,16 @@ project_cashflows <- function(record) {
   # set up params for analysis
   start_age <- record$age
   start_service <- record$service
-  analysis_length <- R_max_age - start_age + 1
+  analysis_length <- R_max_age - start_age + 1 #***
+  PSS <- str_sub(record$Super, 1L, 1L) == "P"
+  retirement_rates <- PSS*retirement_data$Retirement_PSS + (1 - PSS)*retirement_data$Retirement_CSS #***
+  
+  # initialise stuff
   LSL <- record$LSL
-  sum_taken <- 0
+  qx <- px <- vector(length = analysis_length)
+  px[1] <- 1
   age <- start_age
   service <- start_service
-  qx <- px <- vector(length = analysis_length) # -> taken_this_year etc
-  px[1] <- 1
-  PSS <- str_sub(record$Super, 1L, 1L) == "P"
-  retirement_rates <- PSS*retirement_data$Retirement_PSS + (1 - PSS)*retirement_data$Retirement_CSS
-  
   cash_flow_projections <- data.frame(observation = record$AGS, age = NA, service = NA, analysis_year = NA, kpx = NA, qx = NA, taken_in_service = NA,
                                       taken_in_service_weighted = NA, taken_after_exit = NA, taken_after_exit_weighted = NA, 
                                       cash_flow = NA)
