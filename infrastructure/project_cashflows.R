@@ -68,7 +68,6 @@ project_cashflows <- function(record) {
     if (eligible_in_service) takeup_rate <- takeup_rates[year_of_eligibility] else takeup_rate <- 0
     taken_this_year <- LSL*takeup_rate
     taken_this_year_weighted <- taken_this_year*px[index]
-    #sum_taken <- sum_taken + taken_this_year
     LSL <- LSL - taken_this_year
     if (eligible_on_exit) {
       after_exit <- LSL
