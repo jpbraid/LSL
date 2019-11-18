@@ -38,7 +38,7 @@ exit_rates <- agency_data %>% filter(complete.cases(agency_data)) %>% select(Exi
 takeup_rates <- ifelse(start_rate - (0:100)*reduce_rate >= end_rate, start_rate - (0:100)*reduce_rate, end_rate)
 
 # define function for projecting cashflows
-# TODO: remove dependence on global variables
+# TODO: remove dependence on global variables (R_max_age, R_min_age, eligible_year, exit_rates, takeup_rates)
 project_cashflows <- function(record) {
   # set up params for analysis
   start_age <- record$age
