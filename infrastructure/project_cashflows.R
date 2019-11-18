@@ -48,7 +48,7 @@ project_cashflows <- function(record) {
   sum_taken <- 0
   age <- start_age
   service <- start_service
-  qx <- px <- cash_flows <- vector(length = analysis_length) # -> taken_this_year etc
+  qx <- px <- vector(length = analysis_length) # -> taken_this_year etc
   px[1] <- 1
   PSS <- str_sub(record$Super, 1L, 1L) == "P"
   retirement_rates <- PSS*retirement_data$Retirement_PSS + (1 - PSS)*retirement_data$Retirement_CSS
