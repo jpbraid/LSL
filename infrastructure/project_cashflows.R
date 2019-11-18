@@ -53,8 +53,10 @@ project_cashflows <- function(record) {
   px[1] <- 1
   age <- start_age
   service <- start_service
-  cash_flow_projections <- data.frame(observation = record$AGS, age = NA, service = NA, analysis_year = NA, kpx = NA, qx = NA, taken_in_service = NA,
-                                      taken_in_service_weighted = NA, taken_after_exit = NA, taken_after_exit_weighted = NA, 
+  cash_flow_projections <- data.frame(ID = record$AGS, age = NA, service = NA, 
+                                      analysis_year = NA, kpx = NA, qx = NA, 
+                                      taken_in_service = NA, taken_in_service_weighted = NA, 
+                                      taken_after_exit = NA, taken_after_exit_weighted = NA, 
                                       cash_flow = NA)
   
   # now project cash flows for each year
