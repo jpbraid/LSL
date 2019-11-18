@@ -6,7 +6,7 @@ master_file <- "Infrastructure_proj.csv"
 retirement_file <- "Retirementrate_PSSCSS_2017.csv"
 valuation_date <- dmy("01/06/2019")
 eligible_year <- 10 # number of years of service required before eligible for LSL
-start_rate <- 0.09 # rate of in-service LSL use in first year of eligibility
+start_rate <- 0.09
 reduce_rate <- 0.01
 end_rate <- 0.06
 LSL_DATA = "S:/Projection/"
@@ -37,23 +37,23 @@ R_max_age <- max(retirement_data$Age)
 exit_rates <- agency_data %>% filter(complete.cases(agency_data)) %>% select(Exit_Rate) %>% unlist() 
 takeup_rates <- ifelse(start_rate - (0:100)*reduce_rate >= end_rate, start_rate - (0:100)*reduce_rate, end_rate)
 
-
-## LOOK AT A GIVEN OBSERVATION
-current_record <- agency_val[1, ]
-
+# define function for projecting cashflows
+# "not good" in the sense that it depends on global variables
+project_cashflows <- function(record) {
   # set up params for analysis
-  start_age <- current_record$age
-  start_service <- current_record$service
+  start_age <- record$age
+  start_service <- record$service
   analysis_length <- R_max_age - start_age + 1
-  LSL <- current_record$LSL
+  LSL <- record$LSL
   sum_taken <- 0
   age <- start_age
   service <- start_service
-  qx <- px<- vector(length = analysis_length) # -> taken_this_year etc
+  qx <- px <- cash_flows <- vector(length = analysis_length) # -> taken_this_year etc
   px[1] <- 1
-  retirement_rates <- ifelse(str_sub(current_record$Super, 1L, 1L) == "P", 
-                             retirement_data$Retirement_PSS, 
-                             retirement_data$Retirement_CSS)
+  PSS <- str_sub(record$Super, 1L, 1L) == "P"
+  retirement_rates <- PSS*retirement_data$Retirement_PSS + (1 - PSS)*retirement_data$Retirement_CSS
+  
+  cash_flow_projections <- data.frame(observation = record$AGS, analysis_year = NA, kpx = NA, qx = NA, cash_flow = NA)
   
   # now project cash flows for each year
   while (age <= R_max_age) {
@@ -63,13 +63,19 @@ current_record <- agency_val[1, ]
     year_of_eligibility <- max(age - R_min_age + 1, service - eligible_year + 1)
     if (at_retirement_age) qx[index] <- retirement_rates[age - R_min_age + 1] else qx[index] <- exit_rates[service + 1]
     if (eligible) takeup_rate <- takeup_rates[year_of_eligibility] else takeup_rate <- 0
-    taken_this_year <- LSL*takeup_rate
+    taken_this_year <- after_retirement*takeup_rate
     taken_this_year_weighted <- taken_this_year*px[index]
     sum_taken <- sum_taken + taken_this_year
     after_retirement <- LSL - sum_taken
     after_retirement_weighted <- after_retirement*px[index]*qx[index]
-    # CF is just the sum of these:
+    cash_flow <- taken_this_year_weighted + after_retirement_weighted
+    cash_flow_projections <- rbind(cash_flow_projections, 
+                                   data.frame(observation = record$AGS, analysis_year = index, kpx = px[index], 
+                                              qx = qx[index], cash_flow = cash_flow))
     age <- age + 1
     service <- service + 1
     px[index + 1] <- px[index]*(1 - qx[index])
   }
+  
+  return(cash_flow_projections)
+}
